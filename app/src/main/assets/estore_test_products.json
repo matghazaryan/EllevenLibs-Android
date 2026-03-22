@@ -1,0 +1,43 @@
+{
+  "subscriptions": [
+    {
+      "productId": "com.ellevenstudio.example.monthly",
+      "displayName": "Monthly Premium",
+      "description": "Monthly access to all premium features",
+      "displayPrice": "$4.99",
+      "priceAmountMicros": 4990000,
+      "period": "P1M"
+    },
+    {
+      "productId": "com.ellevenstudio.example.yearly",
+      "displayName": "Yearly Premium",
+      "description": "Yearly access to all premium features",
+      "displayPrice": "$39.99",
+      "priceAmountMicros": 39990000,
+      "period": "P1Y"
+    }
+  ],
+  "products": [
+    {
+      "productId": "com.ellevenstudio.example.lifetime",
+      "displayName": "Lifetime Premium",
+      "description": "Lifetime access to all premium features",
+      "displayPrice": "$79.99",
+      "priceAmountMicros": 79990000
+    },
+    {
+      "productId": "com.ellevenstudio.example.coins100",
+      "displayName": "100 Coins",
+      "description": "Buy 100 coins",
+      "displayPrice": "$0.99",
+      "priceAmountMicros": 990000
+    },
+    {
+      "productId": "com.ellevenstudio.example.coins500",
+      "displayName": "500 Coins",
+      "description": "Buy 500 coins",
+      "displayPrice": "$3.99",
+      "priceAmountMicros": 3990000
+    }
+  ]
+}
