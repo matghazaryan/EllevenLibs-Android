@@ -45,18 +45,16 @@ import com.ellevenstudio.estore.EStoreProductType
 import com.ellevenstudio.estore.EStoreFeature
 import com.ellevenstudio.estore.EStoreTheme
 import com.ellevenstudio.estore.paywalls.*
-import com.ellevenstudio.ellevenlibs.ELogger
+import android.util.Log
 import com.ellevenstudio.ellevenlibs.EllevenLibs
 import com.ellevenstudio.ellevenlibs.example.ui.theme.EllevenLibsTheme
 import java.text.SimpleDateFormat
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
-    private val logger = ELogger("Example")
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        logger.info("App started - EllevenLibs v${EllevenLibs.VERSION}")
+        Log.i("Example", "App started - EllevenLibs v${EllevenLibs.VERSION}")
 
         // Configure EAds
         EAds.configure(
@@ -136,7 +134,6 @@ class MainActivity : ComponentActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     ExampleScreen(
                         activity = this,
-                        logger = logger,
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
@@ -148,7 +145,6 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun ExampleScreen(
     activity: ComponentActivity,
-    logger: ELogger,
     modifier: Modifier = Modifier
 ) {
     val isPremium by EStore.isPremium.collectAsState()
@@ -190,22 +186,6 @@ fun ExampleScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // MARK: - ELogger
-            SectionHeader("ELogger")
-            Button(
-                onClick = {
-                    logger.debug("Debug message from Example app")
-                    logger.info("Info message from Example app")
-                    logger.warning("Warning message from Example app")
-                    logger.error("Error message from Example app")
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Test All Log Levels")
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
             // MARK: - EAds Banner
             SectionHeader("EAds - Banner")
             Card(modifier = Modifier.fillMaxWidth()) {
@@ -219,7 +199,7 @@ fun ExampleScreen(
             Button(
                 onClick = {
                     EAdsInterstitial.show(activity) {
-                        logger.info("Interstitial dismissed")
+                        Log.i("Example","Interstitial dismissed")
                     }
                 },
                 modifier = Modifier.fillMaxWidth()
@@ -234,10 +214,10 @@ fun ExampleScreen(
                     EAdsRewarded.show(
                         activity = activity,
                         onReward = { reward ->
-                            logger.info("Reward earned: ${reward.amount} ${reward.type}")
+                            Log.i("Example","Reward earned: ${reward.amount} ${reward.type}")
                         },
                         onDismiss = {
-                            logger.info("Rewarded ad dismissed")
+                            Log.i("Example","Rewarded ad dismissed")
                         }
                     )
                 },
@@ -262,7 +242,7 @@ fun ExampleScreen(
             Button(
                 onClick = {
                     EAdsOpenApp.attachToAppLifecycle { activity }
-                    logger.info("Open app ad attached to lifecycle")
+                    Log.i("Example","Open app ad attached to lifecycle")
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -338,7 +318,7 @@ fun ExampleScreen(
             Button(
                 onClick = {
                     EStore.clearTestPurchases()
-                    logger.info("Test purchases cleared")
+                    Log.i("Example","Test purchases cleared")
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
