@@ -13,23 +13,39 @@ data class EStoreProduct(
     val localizedDescription: String,
     val displayPrice: String,
     val priceAmountMicros: Long,
+    val currencyCode: String?,
     val subscriptionPeriod: String?,
+    /** Trial period ISO 8601 (e.g., "P2W" for 2 weeks, "P3D" for 3 days). Null if no trial. */
+    val trialPeriod: String?,
+    /** Number of trial days. 0 if no trial. */
+    val trialDays: Int,
     internal val productDetails: ProductDetails?,
     internal val config: EStoreProductConfig
 ) {
     companion object {
         fun fromSubscription(details: ProductDetails, config: EStoreProductConfig): EStoreProduct {
             val offer = details.subscriptionOfferDetails?.firstOrNull()
-            val pricingPhase = offer?.pricingPhases?.pricingPhaseList?.firstOrNull()
+            val pricingPhases = offer?.pricingPhases?.pricingPhaseList ?: emptyList()
+
+            // First phase with price > 0 is the main price; free phase is trial
+            val trialPhase = pricingPhases.firstOrNull { it.priceAmountMicros == 0L }
+            val paidPhase = pricingPhases.firstOrNull { it.priceAmountMicros > 0L }
+
+            val trialPeriodStr = trialPhase?.billingPeriod
+            val trialDays = parsePeriodToDays(trialPeriodStr)
+
             return EStoreProduct(
                 id = details.productId,
                 type = config.type,
                 displayName = details.name,
                 localizedTitle = config.title(),
                 localizedDescription = config.description(),
-                displayPrice = pricingPhase?.formattedPrice ?: "",
-                priceAmountMicros = pricingPhase?.priceAmountMicros ?: 0,
-                subscriptionPeriod = pricingPhase?.billingPeriod,
+                displayPrice = paidPhase?.formattedPrice ?: "",
+                priceAmountMicros = paidPhase?.priceAmountMicros ?: 0,
+                currencyCode = paidPhase?.priceCurrencyCode,
+                subscriptionPeriod = paidPhase?.billingPeriod,
+                trialPeriod = trialPeriodStr,
+                trialDays = trialDays,
                 productDetails = details,
                 config = config
             )
@@ -45,14 +61,23 @@ data class EStoreProduct(
                 localizedDescription = config.description(),
                 displayPrice = offer?.formattedPrice ?: "",
                 priceAmountMicros = offer?.priceAmountMicros ?: 0,
+                currencyCode = offer?.priceCurrencyCode,
                 subscriptionPeriod = null,
+                trialPeriod = null,
+                trialDays = 0,
                 productDetails = details,
                 config = config
             )
         }
 
-        /** Create a test product from config (for debug mode). */
-        fun fromTestConfig(config: EStoreProductConfig, displayPrice: String, priceAmountMicros: Long, subscriptionPeriod: String? = null): EStoreProduct {
+        fun fromTestConfig(
+            config: EStoreProductConfig,
+            displayPrice: String,
+            priceAmountMicros: Long,
+            subscriptionPeriod: String? = null,
+            trialPeriod: String? = null,
+            trialDays: Int = 0
+        ): EStoreProduct {
             return EStoreProduct(
                 id = config.id,
                 type = config.type,
@@ -61,10 +86,25 @@ data class EStoreProduct(
                 localizedDescription = config.description(),
                 displayPrice = displayPrice,
                 priceAmountMicros = priceAmountMicros,
+                currencyCode = "USD",
                 subscriptionPeriod = subscriptionPeriod,
+                trialPeriod = trialPeriod,
+                trialDays = trialDays,
                 productDetails = null,
                 config = config
             )
+        }
+
+        /** Parse ISO 8601 period to approximate days. */
+        private fun parsePeriodToDays(period: String?): Int {
+            if (period == null) return 0
+            return when {
+                period.contains("D") -> period.replace("P", "").replace("D", "").toIntOrNull() ?: 0
+                period.contains("W") -> (period.replace("P", "").replace("W", "").toIntOrNull() ?: 0) * 7
+                period.contains("M") -> (period.replace("P", "").replace("M", "").toIntOrNull() ?: 0) * 30
+                period.contains("Y") -> (period.replace("P", "").replace("Y", "").toIntOrNull() ?: 0) * 365
+                else -> 0
+            }
         }
     }
 }

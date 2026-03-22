@@ -53,6 +53,8 @@ object EStore {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var isTestMode = false
     private val testPurchases = mutableListOf<EStorePurchaseInfo>()
+    private var purchaseCallback: ((EStorePurchaseResult) -> Unit)? = null
+    private var pendingPurchaseProduct: EStoreProduct? = null
 
     /**
      * Configure with product definitions. MUST be called before using EStore.
@@ -75,12 +77,47 @@ object EStore {
         isTestMode = false
         billingClient = BillingClient.newBuilder(context)
             .setListener { billingResult, purchases ->
+                val product = pendingPurchaseProduct
                 if (billingResult.responseCode == BillingClient.BillingResponseCode.OK && purchases != null) {
                     scope.launch {
                         for (purchase in purchases) {
                             handlePurchase(purchase)
                         }
+                        // Fire callback with rich result
+                        if (product != null && purchases.isNotEmpty()) {
+                            val p = purchases.first()
+                            purchaseCallback?.invoke(EStorePurchaseResult(
+                                status = EStorePurchaseStatus.SUCCESS,
+                                productId = product.id,
+                                displayPrice = product.displayPrice,
+                                priceAmountMicros = product.priceAmountMicros,
+                                currencyCode = product.currencyCode,
+                                type = product.type,
+                                subscriptionPeriod = product.subscriptionPeriod,
+                                trialPeriod = product.trialPeriod,
+                                trialDays = product.trialDays,
+                                purchaseDate = java.util.Date(p.purchaseTime),
+                                orderId = p.orderId,
+                                purchaseToken = p.purchaseToken
+                            ))
+                        }
+                        purchaseCallback = null
+                        pendingPurchaseProduct = null
                     }
+                } else if (billingResult.responseCode == BillingClient.BillingResponseCode.USER_CANCELED) {
+                    purchaseCallback?.invoke(EStorePurchaseResult(
+                        status = EStorePurchaseStatus.CANCELLED,
+                        productId = product?.id ?: ""
+                    ))
+                    purchaseCallback = null
+                    pendingPurchaseProduct = null
+                } else {
+                    purchaseCallback?.invoke(EStorePurchaseResult(
+                        status = EStorePurchaseStatus.FAILED,
+                        productId = product?.id ?: ""
+                    ))
+                    purchaseCallback = null
+                    pendingPurchaseProduct = null
                 }
             }
             .enablePendingPurchases()
@@ -213,10 +250,14 @@ object EStore {
         prefs?.edit()?.putBoolean(KEY_IS_PREMIUM, premium)?.apply()
     }
 
-    /** Launch the purchase flow. */
-    fun purchase(activity: Activity, productId: String) {
+    /**
+     * Launch the purchase flow.
+     * @param onResult Optional callback with rich purchase result containing price, trial, dates, etc.
+     */
+    fun purchase(activity: Activity, productId: String, onResult: ((EStorePurchaseResult) -> Unit)? = null) {
         val product = _products.value.find { it.id == productId } ?: run {
             Log.w(TAG, "Product not found: $productId")
+            onResult?.invoke(EStorePurchaseResult(status = EStorePurchaseStatus.FAILED, productId = productId))
             return
         }
 
@@ -230,8 +271,27 @@ object EStore {
                 saveTestPurchasesToPrefs()
                 updatePurchaseState(testPurchases.toList())
             }
+            val result = EStorePurchaseResult(
+                status = EStorePurchaseStatus.SUCCESS,
+                productId = productId,
+                displayPrice = product.displayPrice,
+                priceAmountMicros = product.priceAmountMicros,
+                currencyCode = product.currencyCode,
+                type = product.type,
+                subscriptionPeriod = product.subscriptionPeriod,
+                trialPeriod = product.trialPeriod,
+                trialDays = product.trialDays,
+                purchaseDate = info.purchaseDate,
+                expirationDate = info.expirationDate,
+                orderId = info.orderId,
+                purchaseToken = info.purchaseToken
+            )
+            onResult?.invoke(result)
             return
         }
+
+        pendingPurchaseProduct = product
+        purchaseCallback = onResult
 
         val productDetails = product.productDetails ?: return
         val paramsList = if (product.type is EStoreProductType.Subscription) {
