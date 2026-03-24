@@ -40,15 +40,14 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
 }
 
-publishing {
-    publications {
-        register<MavenPublication>("release") {
-            groupId = "com.ellevenstudio"
-            artifactId = "ellevenlibs"
-            version = "1.0.0"
-
-            afterEvaluate {
+afterEvaluate {
+    publishing {
+        publications {
+            register<MavenPublication>("release") {
                 from(components["release"])
+                groupId = "com.github.matghazaryan.EllevenLibs-Android"
+                artifactId = "ellevenlibs"
+                version = project.findProperty("VERSION_NAME")?.toString() ?: "1.0.0"
             }
         }
     }

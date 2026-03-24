@@ -45,14 +45,14 @@ dependencies {
     implementation(libs.androidx.compose.material3)
 }
 
-publishing {
-    publications {
-        register<MavenPublication>("release") {
-            groupId = "com.ellevenstudio"
-            artifactId = "estore"
-            version = "1.0.0"
-            afterEvaluate {
+afterEvaluate {
+    publishing {
+        publications {
+            register<MavenPublication>("release") {
                 from(components["release"])
+                groupId = "com.github.matghazaryan.EllevenLibs-Android"
+                artifactId = "estore"
+                version = project.findProperty("VERSION_NAME")?.toString() ?: "1.0.0"
             }
         }
     }
