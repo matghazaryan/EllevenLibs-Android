@@ -44,6 +44,9 @@ object EStore {
     private val _allPurchaseInfos = MutableStateFlow<List<EStorePurchaseInfo>>(emptyList())
     val allPurchaseInfos: StateFlow<List<EStorePurchaseInfo>> = _allPurchaseInfos.asStateFlow()
 
+    private val _loadingState = MutableStateFlow<EStoreLoadingState>(EStoreLoadingState.Idle)
+    val loadingState: StateFlow<EStoreLoadingState> = _loadingState.asStateFlow()
+
     var config: EStoreConfig? = null
         private set
     val theme: EStoreTheme get() = config?.theme ?: EStoreTheme()
@@ -68,9 +71,11 @@ object EStore {
         // Test mode in debug with test config
         if (isDebug(context) && EStoreTestConfig.hasTestConfig(context)) {
             isTestMode = true
+            _loadingState.value = EStoreLoadingState.Loading
             Log.i(TAG, "Test mode enabled — using estore_test_products.json")
             _products.value = EStoreTestConfig.loadTestProducts(context, config)
             loadTestPurchasesFromPrefs()
+            _loadingState.value = EStoreLoadingState.Loaded
             return
         }
 
@@ -131,6 +136,7 @@ object EStore {
     }
 
     private fun connectAndQuery() {
+        _loadingState.value = EStoreLoadingState.Loading
         billingClient?.startConnection(object : BillingClientStateListener {
             override fun onBillingSetupFinished(billingResult: BillingResult) {
                 if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
@@ -138,6 +144,13 @@ object EStore {
                         queryProducts()
                         refreshPurchases()
                     }
+                } else {
+                    val code = billingResult.responseCode
+                    val msg = billingResult.debugMessage
+                    Log.e(TAG, "Billing setup failed (code $code): $msg")
+                    _loadingState.value = EStoreLoadingState.Failed(
+                        "Billing setup failed (code $code): $msg", code
+                    )
                 }
             }
             override fun onBillingServiceDisconnected() {
@@ -148,7 +161,10 @@ object EStore {
     }
 
     private suspend fun queryProducts() {
-        val cfg = config ?: return
+        val cfg = config ?: run {
+            _loadingState.value = EStoreLoadingState.Failed("EStore not configured. Call configure() first.")
+            return
+        }
         val allProducts = mutableListOf<EStoreProduct>()
 
         if (cfg.subscriptionIds.isNotEmpty()) {
@@ -159,7 +175,13 @@ object EStore {
                         .setProductType(BillingClient.ProductType.SUBS)
                         .build()
                 }).build()
-            billingClient?.queryProductDetails(params)?.productDetailsList?.forEach { details ->
+            val result = billingClient?.queryProductDetails(params)
+            if (result != null && result.billingResult.responseCode != BillingClient.BillingResponseCode.OK) {
+                val code = result.billingResult.responseCode
+                val msg = result.billingResult.debugMessage
+                Log.e(TAG, "Failed to query subscriptions (code $code): $msg")
+            }
+            result?.productDetailsList?.forEach { details ->
                 val pc = cfg.products.first { it.id == details.productId }
                 allProducts.add(EStoreProduct.fromSubscription(details, pc))
             }
@@ -174,13 +196,29 @@ object EStore {
                         .setProductType(BillingClient.ProductType.INAPP)
                         .build()
                 }).build()
-            billingClient?.queryProductDetails(params)?.productDetailsList?.forEach { details ->
+            val result = billingClient?.queryProductDetails(params)
+            if (result != null && result.billingResult.responseCode != BillingClient.BillingResponseCode.OK) {
+                val code = result.billingResult.responseCode
+                val msg = result.billingResult.debugMessage
+                Log.e(TAG, "Failed to query in-app products (code $code): $msg")
+            }
+            result?.productDetailsList?.forEach { details ->
                 val pc = cfg.products.first { it.id == details.productId }
                 allProducts.add(EStoreProduct.fromInApp(details, pc))
             }
         }
 
         _products.value = allProducts.sortedBy { it.priceAmountMicros }
+
+        if (allProducts.isEmpty()) {
+            val totalConfigured = cfg.subscriptionIds.size + inAppIds.size
+            val msg = "No products loaded. $totalConfigured product(s) configured but none returned from Play Store. Check your product IDs in Google Play Console."
+            Log.w(TAG, msg)
+            _loadingState.value = EStoreLoadingState.Failed(msg)
+        } else {
+            Log.i(TAG, "Loaded ${allProducts.size} products")
+            _loadingState.value = EStoreLoadingState.Loaded
+        }
     }
 
     private suspend fun refreshPurchases() {
