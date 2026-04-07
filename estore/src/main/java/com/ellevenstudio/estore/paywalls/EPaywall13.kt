@@ -189,7 +189,7 @@ fun EPaywall13(
                             scaleY = scale
                         },
                     shape = RoundedCornerShape(data.theme.cornerRadius),
-                    color = if (isSelected) data.theme.primaryColor.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.7f),
+                    color = if (isSelected) data.theme.primaryColor.copy(alpha = 0.15f) else data.theme.cardBackgroundColor,
                     border = if (isSelected) {
                         ButtonDefaults.outlinedButtonBorder(true)
                     } else null,
@@ -205,7 +205,7 @@ fun EPaywall13(
                             modifier = Modifier
                                 .size(24.dp)
                                 .background(
-                                    if (isSelected) data.theme.primaryColor else Color.Gray.copy(alpha = 0.2f),
+                                    if (isSelected) data.theme.primaryColor else data.theme.secondaryTextColor.copy(alpha = 0.2f),
                                     CircleShape
                                 ),
                             contentAlignment = Alignment.Center
@@ -213,7 +213,7 @@ fun EPaywall13(
                             if (isSelected) {
                                 Text(
                                     "\u2713",
-                                    color = Color.White,
+                                    color = data.theme.buttonTextColor,
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -278,7 +278,7 @@ private fun Paywall13GlassFeature(icon: String, text: String, textColor: Color) 
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        color = Color.White.copy(alpha = 0.6f),
+        color = data.theme.cardBackgroundColor,
         shadowElevation = 1.dp
     ) {
         Row(

@@ -168,7 +168,7 @@ fun EPaywall15(
                         }
                 ) {
                     EPaywallCloseButton(
-                        theme = data.theme.copy(secondaryTextColor = Color.White.copy(alpha = 0.6f)),
+                        theme = data.theme.copy(secondaryTextColor = data.theme.secondaryTextColor),
                         onClick = onDismiss
                     )
                 }
@@ -289,7 +289,7 @@ fun EPaywall15(
                             scaleY = cardScale * selectionScale
                         },
                     shape = RoundedCornerShape(data.theme.cornerRadius),
-                    color = if (isSelected) data.theme.primaryColor.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.06f),
+                    color = if (isSelected) data.theme.primaryColor.copy(alpha = 0.15f) else data.theme.cardBackgroundColor.copy(alpha = 0.06f),
                     border = if (isSelected) ButtonDefaults.outlinedButtonBorder(true) else null,
                     onClick = { selectedId = product.id }
                 ) {
@@ -342,7 +342,7 @@ fun EPaywall15(
                         val shimmerBrush = Brush.linearGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                Color.White.copy(alpha = 0.3f),
+                                data.theme.buttonTextColor.copy(alpha = 0.3f),
                                 Color.Transparent
                             ),
                             start = Offset(shineOffset, 0f),
@@ -356,13 +356,13 @@ fun EPaywall15(
                 if (isLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
-                        color = Color.White,
+                        color = data.theme.buttonTextColor,
                         strokeWidth = 2.dp
                     )
                 } else {
                     Text(
                         "Claim This Offer",
-                        color = Color.White,
+                        color = data.theme.buttonTextColor,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -372,7 +372,7 @@ fun EPaywall15(
             Spacer(Modifier.height(8.dp))
 
             EPaywallRestoreButton(
-                theme = data.theme.copy(secondaryTextColor = Color.White.copy(alpha = 0.4f))
+                theme = data.theme.copy(secondaryTextColor = data.theme.secondaryTextColor)
             ) { EStore.restore() }
 
             Spacer(Modifier.height(16.dp))

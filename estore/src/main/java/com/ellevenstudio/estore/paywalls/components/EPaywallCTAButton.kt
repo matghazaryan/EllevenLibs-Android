@@ -28,11 +28,11 @@ internal fun EPaywallCTAButton(
         if (isLoading) {
             CircularProgressIndicator(
                 modifier = Modifier.size(20.dp),
-                color = Color.White,
+                color = theme.buttonTextColor,
                 strokeWidth = 2.dp
             )
         } else {
-            Text(title, color = Color.White, style = MaterialTheme.typography.titleMedium)
+            Text(title, color = theme.buttonTextColor, style = MaterialTheme.typography.titleMedium)
         }
     }
 }

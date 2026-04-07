@@ -86,8 +86,8 @@ fun EPaywall8(
             products.forEach { product ->
                 val isSelected = product.id == selectedId
                 val pillBg = if (isSelected) data.theme.primaryColor else data.theme.cardBackgroundColor
-                val pillText = if (isSelected) Color.White else textColor
-                val pillSub = if (isSelected) Color.White.copy(alpha = 0.8f) else data.theme.secondaryTextColor
+                val pillText = if (isSelected) data.theme.buttonTextColor else textColor
+                val pillSub = if (isSelected) data.theme.buttonTextColor.copy(alpha = 0.8f) else data.theme.secondaryTextColor
 
                 Surface(
                     modifier = Modifier
@@ -109,7 +109,7 @@ fun EPaywall8(
                         Text(
                             product.displayPrice,
                             style = MaterialTheme.typography.titleMedium,
-                            color = if (isSelected) Color.White else data.theme.primaryColor
+                            color = if (isSelected) data.theme.buttonTextColor else data.theme.primaryColor
                         )
                     }
                 }

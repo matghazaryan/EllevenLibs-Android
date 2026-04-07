@@ -19,8 +19,8 @@ internal fun EPaywallProductCard(
     onClick: () -> Unit
 ) {
     val bg = if (isSelected) theme.primaryColor else theme.cardBackgroundColor
-    val textCol = if (isSelected) Color.White else theme.textColor
-    val subCol = if (isSelected) Color.White.copy(alpha = 0.8f) else theme.secondaryTextColor
+    val textCol = if (isSelected) theme.buttonTextColor else theme.textColor
+    val subCol = if (isSelected) theme.buttonTextColor.copy(alpha = 0.8f) else theme.secondaryTextColor
 
     Surface(
         modifier = Modifier
@@ -39,7 +39,7 @@ internal fun EPaywallProductCard(
             Text(
                 product.displayPrice,
                 style = MaterialTheme.typography.titleMedium,
-                color = if (isSelected) Color.White else theme.primaryColor
+                color = if (isSelected) theme.buttonTextColor else theme.primaryColor
             )
         }
     }

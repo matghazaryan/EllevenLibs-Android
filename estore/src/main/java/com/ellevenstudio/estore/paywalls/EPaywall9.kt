@@ -72,7 +72,7 @@ fun EPaywall9(
                             .width(40.dp)
                             .height(4.dp)
                             .clip(RoundedCornerShape(2.dp))
-                            .background(Color.Gray.copy(alpha = 0.3f))
+                            .background(data.theme.secondaryTextColor.copy(alpha = 0.3f))
                     )
 
                     Spacer(Modifier.height(20.dp))
@@ -108,7 +108,7 @@ fun EPaywall9(
                         products.forEach { product ->
                             val isSelected = product.id == selectedId
                             val chipBg = if (isSelected) data.theme.primaryColor else data.theme.cardBackgroundColor
-                            val chipText = if (isSelected) Color.White else textColor
+                            val chipText = if (isSelected) data.theme.buttonTextColor else textColor
 
                             Surface(
                                 modifier = Modifier.clickable { selectedId = product.id },

@@ -91,7 +91,7 @@ fun EPaywall3(
                 products.forEach { product ->
                     val isSelected = product.id == selectedId
                     val chipBg = if (isSelected) data.theme.primaryColor else data.theme.cardBackgroundColor
-                    val chipText = if (isSelected) Color.White else data.theme.textColor
+                    val chipText = if (isSelected) data.theme.buttonTextColor else data.theme.textColor
 
                     Surface(
                         modifier = Modifier.clickable { selectedId = product.id },

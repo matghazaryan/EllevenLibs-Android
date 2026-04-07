@@ -111,7 +111,7 @@ fun EPaywall6(
                         ) {
                             if (isSelected) {
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                                    Text("\u2713", color = Color.White, style = MaterialTheme.typography.labelMedium)
+                                    Text("\u2713", color = data.theme.buttonTextColor, style = MaterialTheme.typography.labelMedium)
                                 }
                             }
                         }
@@ -131,7 +131,7 @@ fun EPaywall6(
                                             "SAVE",
                                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                                             style = MaterialTheme.typography.labelSmall,
-                                            color = Color.White
+                                            color = data.theme.buttonTextColor
                                         )
                                     }
                                 }

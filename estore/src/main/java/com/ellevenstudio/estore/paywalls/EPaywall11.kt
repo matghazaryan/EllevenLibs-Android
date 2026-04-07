@@ -47,7 +47,8 @@ fun EPaywall11(
         }
     }
 
-    val textColor = data.theme.textColor
+    val t = data.theme
+    val textColor = t.textColor
 
     // Animated gradient
     val infiniteTransition = rememberInfiniteTransition(label = "gradient")
@@ -61,9 +62,9 @@ fun EPaywall11(
         label = "gradientOffset"
     )
 
-    val color1 = data.theme.primaryColor
-    val color2 = data.theme.accentColor
-    val color3 = Color(0xFF1A1A2E)
+    val color1 = t.primaryColor
+    val color2 = t.accentColor
+    val color3 = t.backgroundColor
 
     val animatedGradient = Brush.verticalGradient(
         colors = listOf(
@@ -104,7 +105,7 @@ fun EPaywall11(
             if (onDismiss != null) {
                 Box(modifier = Modifier.fillMaxWidth()) {
                     EPaywallCloseButton(
-                        theme = data.theme.copy(secondaryTextColor = Color.White.copy(alpha = 0.7f)),
+                        theme = t.copy(secondaryTextColor = textColor.copy(alpha = 0.7f)),
                         onClick = onDismiss
                     )
                 }
@@ -140,7 +141,7 @@ fun EPaywall11(
                         fontWeight = FontWeight.Bold,
                         fontSize = 32.sp
                     ),
-                    color = Color.White,
+                    color = textColor,
                     textAlign = TextAlign.Center
                 )
             }
@@ -156,7 +157,7 @@ fun EPaywall11(
                 Text(
                     "Get unlimited access to all features",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = Color.White.copy(alpha = 0.8f),
+                    color = textColor.copy(alpha = 0.8f),
                     textAlign = TextAlign.Center
                 )
             }
@@ -171,7 +172,7 @@ fun EPaywall11(
                         tween(600, delayMillis = 300 + index * 100)
                     ) { it / 2 }
                 ) {
-                    Paywall11FeatureItem(icon = feature.icon, text = feature.title)
+                    Paywall11FeatureItem(icon = feature.icon, text = feature.title, textColor = textColor, cardBgColor = t.cardBackgroundColor)
                 }
                 Spacer(Modifier.height(12.dp))
             }
@@ -187,13 +188,12 @@ fun EPaywall11(
                     ) { it / 2 }
                 ) {
                     val isSelected = product.id == selectedId
-                    val cardBg = if (isSelected) Color.White.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.1f)
-                    val borderColor = if (isSelected) Color.White else Color.Transparent
+                    val cardBg = if (isSelected) t.cardBackgroundColor.copy(alpha = 0.25f) else t.cardBackgroundColor.copy(alpha = 0.1f)
 
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth(),
-                        shape = RoundedCornerShape(data.theme.cornerRadius),
+                        shape = RoundedCornerShape(t.cornerRadius),
                         color = cardBg,
                         border = if (isSelected) ButtonDefaults.outlinedButtonBorder(true) else null,
                         onClick = { selectedId = product.id }
@@ -206,21 +206,21 @@ fun EPaywall11(
                                 Text(
                                     product.localizedTitle,
                                     style = MaterialTheme.typography.titleMedium,
-                                    color = Color.White,
+                                    color = textColor,
                                     fontWeight = FontWeight.SemiBold
                                 )
                                 product.subscriptionPeriod?.let {
                                     Text(
                                         it,
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = Color.White.copy(alpha = 0.7f)
+                                        color = textColor.copy(alpha = 0.7f)
                                     )
                                 }
                             }
                             Text(
                                 product.displayPrice,
                                 style = MaterialTheme.typography.titleLarge,
-                                color = Color.White,
+                                color = textColor,
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -253,19 +253,19 @@ fun EPaywall11(
                             scaleX = pulseScale
                             scaleY = pulseScale
                         },
-                    shape = RoundedCornerShape(data.theme.cornerRadius),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.White)
+                    shape = RoundedCornerShape(t.cornerRadius),
+                    colors = ButtonDefaults.buttonColors(containerColor = t.primaryColor)
                 ) {
                     if (isLoading) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(20.dp),
-                            color = data.theme.primaryColor,
+                            color = t.buttonTextColor,
                             strokeWidth = 2.dp
                         )
                     } else {
                         Text(
                             "Subscribe Now",
-                            color = data.theme.primaryColor,
+                            color = t.buttonTextColor,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -276,7 +276,7 @@ fun EPaywall11(
             Spacer(Modifier.height(8.dp))
 
             EPaywallRestoreButton(
-                theme = data.theme.copy(secondaryTextColor = Color.White.copy(alpha = 0.5f))
+                theme = t.copy(secondaryTextColor = textColor.copy(alpha = 0.5f))
             ) { EStore.restore() }
 
             Spacer(Modifier.height(16.dp))
@@ -285,11 +285,11 @@ fun EPaywall11(
 }
 
 @Composable
-private fun Paywall11FeatureItem(icon: String, text: String) {
+private fun Paywall11FeatureItem(icon: String, text: String, textColor: Color, cardBgColor: Color) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+            .background(cardBgColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -298,7 +298,7 @@ private fun Paywall11FeatureItem(icon: String, text: String) {
         Text(
             text,
             style = MaterialTheme.typography.bodyMedium,
-            color = Color.White
+            color = textColor
         )
     }
 }

@@ -65,7 +65,7 @@ fun EPaywall4(
             if (onDismiss != null) {
                 Box(modifier = Modifier.fillMaxWidth()) {
                     EPaywallCloseButton(
-                        theme = data.theme.copy(secondaryTextColor = Color.White),
+                        theme = data.theme.copy(secondaryTextColor = data.theme.buttonTextColor),
                         onClick = onDismiss
                     )
                 }
@@ -83,13 +83,13 @@ fun EPaywall4(
             Text(
                 "Unlock Everything",
                 style = MaterialTheme.typography.headlineLarge,
-                color = Color.White,
+                color = data.theme.buttonTextColor,
                 textAlign = TextAlign.Center
             )
             Text(
                 "Get full access to all premium features",
                 style = MaterialTheme.typography.bodyLarge,
-                color = Color.White.copy(alpha = 0.85f),
+                color = data.theme.buttonTextColor.copy(alpha = 0.85f),
                 textAlign = TextAlign.Center
             )
 
@@ -130,7 +130,7 @@ fun EPaywall4(
                                         Surface(
                                             modifier = Modifier.size(10.dp),
                                             shape = CircleShape,
-                                            color = Color.White
+                                            color = data.theme.buttonTextColor
                                         ) {}
                                     }
                                 }

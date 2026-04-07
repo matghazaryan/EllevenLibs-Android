@@ -52,8 +52,11 @@ fun EPaywall12(
         }
     }
 
-    val bgColor = Color(0xFF0D0D1A)
-    val particleColor = data.theme.primaryColor
+    val t = data.theme
+    val bgColor = t.backgroundColor
+    val textColor = t.textColor
+    val subColor = t.secondaryTextColor
+    val particleColor = t.primaryColor
 
     val infiniteTransition = rememberInfiniteTransition(label = "particles")
     val time by infiniteTransition.animateFloat(
@@ -128,7 +131,7 @@ fun EPaywall12(
             if (onDismiss != null) {
                 Box(modifier = Modifier.fillMaxWidth()) {
                     EPaywallCloseButton(
-                        theme = data.theme.copy(secondaryTextColor = Color.White.copy(alpha = 0.6f)),
+                        theme = t.copy(secondaryTextColor = subColor),
                         onClick = onDismiss
                     )
                 }
@@ -151,7 +154,7 @@ fun EPaywall12(
                     fontSize = 30.sp,
                     lineHeight = 36.sp
                 ),
-                color = Color.White,
+                color = textColor,
                 textAlign = TextAlign.Center
             )
 
@@ -160,7 +163,7 @@ fun EPaywall12(
             Text(
                 "Choose your plan and unlock everything",
                 style = MaterialTheme.typography.bodyLarge,
-                color = Color.White.copy(alpha = 0.6f),
+                color = subColor,
                 textAlign = TextAlign.Center
             )
 
@@ -174,7 +177,7 @@ fun EPaywall12(
                 Box(
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    val cardCorner = data.theme.cornerRadius
+                    val cardCorner = t.cornerRadius
 
                     Surface(
                         modifier = Modifier
@@ -194,7 +197,7 @@ fun EPaywall12(
                                 } else Modifier
                             ),
                         shape = RoundedCornerShape(cardCorner),
-                        color = if (isSelected) Color.White.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.06f),
+                        color = if (isSelected) t.cardBackgroundColor.copy(alpha = 0.12f) else t.cardBackgroundColor.copy(alpha = 0.06f),
                         onClick = { selectedId = product.id }
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
@@ -207,21 +210,21 @@ fun EPaywall12(
                                     Text(
                                         product.localizedTitle,
                                         style = MaterialTheme.typography.titleMedium,
-                                        color = Color.White,
+                                        color = textColor,
                                         fontWeight = FontWeight.SemiBold
                                     )
                                     product.subscriptionPeriod?.let {
                                         Text(
                                             it,
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = Color.White.copy(alpha = 0.5f)
+                                            color = subColor
                                         )
                                     }
                                 }
                                 Text(
                                     product.displayPrice,
                                     style = MaterialTheme.typography.titleLarge,
-                                    color = if (isSelected) particleColor else Color.White,
+                                    color = if (isSelected) particleColor else textColor,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -229,8 +232,7 @@ fun EPaywall12(
                             if (isMostPopular) {
                                 Spacer(Modifier.height(8.dp))
                                 Paywall12PopularBadge(
-                                    color = particleColor,
-                                    rotation = borderRotation
+                                    color = particleColor
                                 )
                             }
                         }
@@ -269,19 +271,19 @@ fun EPaywall12(
                         scaleX = ctaScale
                         scaleY = ctaScale
                     },
-                shape = RoundedCornerShape(data.theme.cornerRadius),
+                shape = RoundedCornerShape(t.cornerRadius),
                 colors = ButtonDefaults.buttonColors(containerColor = particleColor)
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
-                        color = Color.White,
+                        color = t.buttonTextColor,
                         strokeWidth = 2.dp
                     )
                 } else {
                     Text(
                         "Get Started",
-                        color = Color.White,
+                        color = t.buttonTextColor,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -291,7 +293,7 @@ fun EPaywall12(
             Spacer(Modifier.height(8.dp))
 
             EPaywallRestoreButton(
-                theme = data.theme.copy(secondaryTextColor = Color.White.copy(alpha = 0.4f))
+                theme = t.copy(secondaryTextColor = subColor)
             ) { EStore.restore() }
 
             Spacer(Modifier.height(16.dp))
@@ -308,22 +310,9 @@ private data class Paywall12Particle(
 )
 
 @Composable
-private fun Paywall12PopularBadge(color: Color, rotation: Float) {
+private fun Paywall12PopularBadge(color: Color) {
     Box(
         modifier = Modifier
-            .drawBehind {
-                val brush = Brush.sweepGradient(
-                    colors = listOf(color, color.copy(alpha = 0.3f), color, color.copy(alpha = 0.3f), color)
-                )
-                rotate(rotation) {
-                    drawRoundRect(
-                        brush = brush,
-                        style = Stroke(width = 1.5.dp.toPx()),
-                        cornerRadius = CornerRadius(8.dp.toPx())
-                    )
-                }
-            }
-            .padding(1.5.dp)
             .background(color.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
             .padding(horizontal = 12.dp, vertical = 4.dp)
     ) {

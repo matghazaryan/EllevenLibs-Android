@@ -78,7 +78,7 @@ fun EPaywall10(
                     Text(
                         "Your Balance",
                         style = MaterialTheme.typography.labelLarge,
-                        color = Color.White.copy(alpha = 0.8f)
+                        color = data.theme.buttonTextColor.copy(alpha = 0.8f)
                     )
                     Spacer(Modifier.height(8.dp))
                     // Show total balance across all consumables
@@ -86,7 +86,7 @@ fun EPaywall10(
                     Text(
                         "\uD83E\uDE99 $totalBalance",
                         style = MaterialTheme.typography.displaySmall,
-                        color = Color.White
+                        color = data.theme.buttonTextColor
                     )
                 }
             }
@@ -166,7 +166,7 @@ private fun ConsumableCard(
                 colors = ButtonDefaults.buttonColors(containerColor = theme.primaryColor),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(product.displayPrice, color = Color.White)
+                Text(product.displayPrice, color = theme.buttonTextColor)
             }
         }
     }

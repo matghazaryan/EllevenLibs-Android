@@ -120,8 +120,8 @@ private fun PlanCard(
     onClick: () -> Unit
 ) {
     val bg = if (isSelected) theme.primaryColor else theme.cardBackgroundColor
-    val textCol = if (isSelected) Color.White else theme.textColor
-    val subCol = if (isSelected) Color.White.copy(alpha = 0.8f) else theme.secondaryTextColor
+    val textCol = if (isSelected) theme.buttonTextColor else theme.textColor
+    val subCol = if (isSelected) theme.buttonTextColor.copy(alpha = 0.8f) else theme.secondaryTextColor
 
     Surface(
         modifier = modifier.clickable(onClick = onClick),
@@ -142,7 +142,7 @@ private fun PlanCard(
                         "BEST VALUE",
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color.White
+                        color = theme.buttonTextColor
                     )
                 }
                 Spacer(Modifier.height(8.dp))
@@ -153,7 +153,7 @@ private fun PlanCard(
                 Text(it, style = MaterialTheme.typography.bodySmall, color = subCol)
                 Spacer(Modifier.height(4.dp))
             }
-            Text(product.displayPrice, style = MaterialTheme.typography.titleMedium, color = if (isSelected) Color.White else theme.primaryColor)
+            Text(product.displayPrice, style = MaterialTheme.typography.titleMedium, color = if (isSelected) theme.buttonTextColor else theme.primaryColor)
         }
     }
 }

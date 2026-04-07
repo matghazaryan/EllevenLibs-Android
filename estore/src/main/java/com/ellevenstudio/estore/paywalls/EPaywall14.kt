@@ -31,9 +31,9 @@ import kotlinx.coroutines.delay
 import kotlin.random.Random
 
 /**
- * Dark Premium / Luxury style paywall with pure black background,
- * gold accents, animated sparkle particles, rotating diamond icon,
- * animated gold border cards, and typewriter effect headline.
+ * Dark Premium / Luxury style paywall with dark background,
+ * accent sparkle particles, rotating diamond icon,
+ * animated accent border cards, and typewriter effect headline.
  */
 @Composable
 fun EPaywall14(
@@ -52,9 +52,12 @@ fun EPaywall14(
         }
     }
 
-    val gold = Color(0xFFFFD700)
-    val goldDark = Color(0xFFFFA500)
-    val bgColor = Color(0xFF050505)
+    val t = data.theme
+    val accent = t.accentColor
+    val accentDark = t.primaryColor
+    val bgColor = t.backgroundColor
+    val textColor = t.textColor
+    val subColor = t.secondaryTextColor
 
     val infiniteTransition = rememberInfiniteTransition(label = "luxury")
 
@@ -68,7 +71,7 @@ fun EPaywall14(
         label = "diamond"
     )
 
-    // Rotating gold border for cards
+    // Rotating accent border for cards
     val borderRotation by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 360f,
@@ -119,7 +122,7 @@ fun EPaywall14(
             sparkles.forEach { s ->
                 val twinkle = ((kotlin.math.sin((sparkleTime * s.speed * Math.PI * 2).toDouble()) + 1.0) / 2.0).toFloat()
                 drawCircle(
-                    color = gold.copy(alpha = s.baseAlpha * twinkle),
+                    color = accent.copy(alpha = s.baseAlpha * twinkle),
                     radius = s.size * (0.5f + twinkle * 0.5f),
                     center = Offset(s.x * size.width, s.y * size.height)
                 )
@@ -137,7 +140,7 @@ fun EPaywall14(
             if (onDismiss != null) {
                 Box(modifier = Modifier.fillMaxWidth()) {
                     EPaywallCloseButton(
-                        theme = data.theme.copy(secondaryTextColor = Color.White.copy(alpha = 0.5f)),
+                        theme = t.copy(secondaryTextColor = subColor),
                         onClick = onDismiss
                     )
                 }
@@ -166,7 +169,7 @@ fun EPaywall14(
                     fontSize = 32.sp,
                     letterSpacing = 1.sp
                 ),
-                color = gold,
+                color = accent,
                 textAlign = TextAlign.Center
             )
 
@@ -175,7 +178,7 @@ fun EPaywall14(
             Text(
                 "The ultimate luxury experience",
                 style = MaterialTheme.typography.bodyLarge,
-                color = Color.White.copy(alpha = 0.5f),
+                color = subColor,
                 textAlign = TextAlign.Center
             )
 
@@ -188,11 +191,11 @@ fun EPaywall14(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(feature.icon, color = gold, style = MaterialTheme.typography.titleMedium)
+                    Text(feature.icon, color = accent, style = MaterialTheme.typography.titleMedium)
                     Text(
                         feature.title,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.8f)
+                        color = textColor.copy(alpha = 0.8f)
                     )
                 }
                 Spacer(Modifier.height(12.dp))
@@ -200,10 +203,10 @@ fun EPaywall14(
 
             Spacer(Modifier.height(24.dp))
 
-            // Product cards with animated gold border
+            // Product cards with animated accent border
             products.forEach { product ->
                 val isSelected = product.id == selectedId
-                val cornerRad = data.theme.cornerRadius
+                val cornerRad = t.cornerRadius
 
                 Surface(
                     modifier = Modifier
@@ -212,7 +215,7 @@ fun EPaywall14(
                             if (isSelected) {
                                 Modifier.drawBehind {
                                     val brush = Brush.sweepGradient(
-                                        colors = listOf(gold, goldDark, gold.copy(alpha = 0.5f), gold),
+                                        colors = listOf(accent, accentDark, accent.copy(alpha = 0.5f), accent),
                                         center = center
                                     )
                                     rotate(borderRotation) {
@@ -226,7 +229,7 @@ fun EPaywall14(
                             } else Modifier
                         ),
                     shape = RoundedCornerShape(cornerRad),
-                    color = if (isSelected) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.04f),
+                    color = if (isSelected) t.cardBackgroundColor.copy(alpha = 0.08f) else t.cardBackgroundColor.copy(alpha = 0.04f),
                     onClick = { selectedId = product.id }
                 ) {
                     Row(
@@ -237,27 +240,27 @@ fun EPaywall14(
                             Text(
                                 product.localizedTitle,
                                 style = MaterialTheme.typography.titleMedium,
-                                color = Color.White,
+                                color = textColor,
                                 fontWeight = FontWeight.SemiBold
                             )
                             product.subscriptionPeriod?.let {
                                 Text(
                                     it,
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White.copy(alpha = 0.4f)
+                                    color = subColor
                                 )
                             }
                             Text(
                                 product.localizedDescription,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color.White.copy(alpha = 0.4f),
+                                color = subColor,
                                 maxLines = 2
                             )
                         }
                         Text(
                             product.displayPrice,
                             style = MaterialTheme.typography.titleLarge,
-                            color = if (isSelected) gold else Color.White.copy(alpha = 0.8f),
+                            color = if (isSelected) accent else textColor.copy(alpha = 0.8f),
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -267,7 +270,7 @@ fun EPaywall14(
 
             Spacer(Modifier.height(20.dp))
 
-            // Gold CTA
+            // CTA
             Button(
                 onClick = {
                     val id = selectedId ?: return@Button
@@ -279,19 +282,19 @@ fun EPaywall14(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
-                shape = RoundedCornerShape(data.theme.cornerRadius),
-                colors = ButtonDefaults.buttonColors(containerColor = gold)
+                shape = RoundedCornerShape(t.cornerRadius),
+                colors = ButtonDefaults.buttonColors(containerColor = accent)
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
-                        color = bgColor,
+                        color = t.buttonTextColor,
                         strokeWidth = 2.dp
                     )
                 } else {
                     Text(
                         "Subscribe Now",
-                        color = bgColor,
+                        color = t.buttonTextColor,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -301,7 +304,7 @@ fun EPaywall14(
             Spacer(Modifier.height(8.dp))
 
             EPaywallRestoreButton(
-                theme = data.theme.copy(secondaryTextColor = Color.White.copy(alpha = 0.3f))
+                theme = t.copy(secondaryTextColor = subColor)
             ) { EStore.restore() }
 
             Spacer(Modifier.height(16.dp))

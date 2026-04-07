@@ -127,7 +127,7 @@ fun EPaywall5(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     repeat(products.size) { index ->
-                        val dotColor = if (index == pagerState.currentPage) data.theme.primaryColor else Color.Gray.copy(alpha = 0.3f)
+                        val dotColor = if (index == pagerState.currentPage) data.theme.primaryColor else data.theme.secondaryTextColor.copy(alpha = 0.3f)
                         Surface(
                             modifier = Modifier.size(8.dp),
                             shape = androidx.compose.foundation.shape.CircleShape,

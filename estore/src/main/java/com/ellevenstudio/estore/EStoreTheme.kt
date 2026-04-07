@@ -27,5 +27,6 @@ data class EStoreTheme(
     val textColor: Color = Color(0xFF1C1B1F),
     val secondaryTextColor: Color = Color(0xFF6B6B6B),
     val cardBackgroundColor: Color = Color(0xFFF2F2F2),
+    val buttonTextColor: Color = Color.White,
     val cornerRadius: Dp = 16.dp
 )
