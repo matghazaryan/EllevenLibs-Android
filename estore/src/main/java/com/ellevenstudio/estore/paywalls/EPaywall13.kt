@@ -163,7 +163,7 @@ fun EPaywall13(
 
             // Features in glass cards
             data.features.forEach { feature ->
-                Paywall13GlassFeature(icon = feature.icon, text = feature.title, textColor = textColor)
+                Paywall13GlassFeature(icon = feature.icon, text = feature.title, textColor = textColor, cardBgColor = data.theme.cardBackgroundColor)
                 Spacer(Modifier.height(8.dp))
             }
 
@@ -274,11 +274,11 @@ fun EPaywall13(
 }
 
 @Composable
-private fun Paywall13GlassFeature(icon: String, text: String, textColor: Color) {
+private fun Paywall13GlassFeature(icon: String, text: String, textColor: Color, cardBgColor: Color) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        color = data.theme.cardBackgroundColor,
+        color = cardBgColor,
         shadowElevation = 1.dp
     ) {
         Row(
