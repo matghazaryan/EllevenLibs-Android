@@ -45,6 +45,9 @@ import com.ellevenstudio.estore.EStoreProductType
 import com.ellevenstudio.estore.EStoreFeature
 import com.ellevenstudio.estore.EStoreTheme
 import com.ellevenstudio.estore.paywalls.*
+import com.ellevenstudio.egate.EGate
+import com.ellevenstudio.egate.EGateConfig
+import com.ellevenstudio.egate.EGateOverlay
 import android.util.Log
 import com.ellevenstudio.ellevenlibs.EllevenLibs
 import com.ellevenstudio.ellevenlibs.example.ui.theme.EllevenLibsTheme
@@ -128,6 +131,34 @@ class MainActivity : ComponentActivity() {
             )
         )
 
+        // Configure EGate
+        EGate.configure(
+            context = this,
+            config = EGateConfig(
+                maxPlays = 5,
+                localizedTitles = mapOf(
+                    "en" to "Play Limit Reached",
+                    "hy" to "\u053D\u0561\u0572\u0565\u0580\u056B \u057D\u0561\u0570\u0574\u0561\u0576\u0561\u0583\u0561\u056F\u0568 \u057D\u057A\u0561\u057C\u057E\u0561\u056E \u0567"
+                ),
+                localizedMessages = mapOf(
+                    "en" to "Upgrade to premium or watch an ad to continue playing.",
+                    "hy" to "\u0541\u0565\u057C\u0584 \u0562\u0561\u0566\u0561\u0576\u0561\u0563\u0580\u0561\u0576\u0564\u0561\u056F\u056B \u0569\u0561\u0580\u0574\u0561\u0581\u0574\u0561\u0576 \u056F\u0561\u0574 \u0564\u056B\u057F\u0565\u0584 \u0563\u0578\u057E\u0561\u0566\u0564\u0589"
+                ),
+                localizedPremiumButtonTexts = mapOf(
+                    "en" to "Go Premium",
+                    "hy" to "\u054A\u0580\u0565\u0574\u056B\u0578\u0582\u0574"
+                ),
+                localizedAdButtonTexts = mapOf(
+                    "en" to "Watch Ad to Continue",
+                    "hy" to "\u0534\u056B\u057F\u0565\u0584 \u0563\u0578\u057E\u0561\u0566\u0564"
+                ),
+                localizedDismissButtonTexts = mapOf(
+                    "en" to "Later",
+                    "hy" to "\u0540\u0565\u057F\u0578"
+                )
+            )
+        )
+
         enableEdgeToEdge()
         setContent {
             EllevenLibsTheme {
@@ -151,6 +182,8 @@ fun ExampleScreen(
     val products by EStore.products.collectAsState()
     val purchaseInfo by EStore.purchaseInfo.collectAsState()
     val allPurchaseInfos by EStore.allPurchaseInfos.collectAsState()
+    val gateCount by EGate.currentCount.collectAsState()
+    val gateActive by EGate.shouldShowGate.collectAsState()
     val dateFormat = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
     var showPaywall by remember { mutableIntStateOf(0) }
 
@@ -162,6 +195,35 @@ fun ExampleScreen(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // MARK: - EGate Test
+            SectionHeader("EGate - Play Limit Test")
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    InfoRow("Plays", "$gateCount / ${EGate.config.maxPlays}")
+                    InfoRow("Gate Active", if (gateActive) "Yes" else "No")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Button(
+                onClick = { EGate.recordPlay() },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Play Game (Record Play)")
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Button(
+                onClick = { EGate.reset() },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Reset Play Count")
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             // MARK: - Header
             Text(
                 text = "EllevenLibs Example",
@@ -407,6 +469,9 @@ fun ExampleScreen(
             14 -> EPaywall14(activity = activity, onDismiss = { showPaywall = 0 })
             15 -> EPaywall15(activity = activity, onDismiss = { showPaywall = 0 })
         }
+
+        // EGate overlay
+        EGateOverlay(activity = activity)
     }
 }
 
