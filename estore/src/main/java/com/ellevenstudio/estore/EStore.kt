@@ -125,7 +125,12 @@ object EStore {
                     pendingPurchaseProduct = null
                 }
             }
-            .enablePendingPurchases()
+            .enablePendingPurchases(
+                PendingPurchasesParams.newBuilder()
+                    .enableOneTimeProducts()
+                    .enablePrepaidPlans()
+                    .build()
+            )
             .build()
 
         connectAndQuery()
