@@ -1,6 +1,7 @@
 package com.ellevenstudio.estore
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -17,7 +18,9 @@ import androidx.compose.ui.unit.dp
  *         primaryColor = Color(0xFF6750A4),
  *         accentColor = Color(0xFFFF9800),
  *         backgroundColor = Color.Black,
- *         textColor = Color.White
+ *         textColor = Color.White,
+ *         fontFamily = FontFamily(Font(R.font.noteworthy)),
+ *         backgroundImageResId = R.drawable.bg_premium
  *     )
  */
 data class EStoreTheme(
@@ -28,5 +31,12 @@ data class EStoreTheme(
     val secondaryTextColor: Color = Color(0xFF6B6B6B),
     val cardBackgroundColor: Color = Color(0xFFF2F2F2),
     val buttonTextColor: Color = Color.White,
-    val cornerRadius: Dp = 16.dp
-)
+    val cornerRadius: Dp = 16.dp,
+    val fontFamily: FontFamily? = null,
+    val backgroundImageResId: Int? = null,
+    val termsURL: String? = null,
+    val privacyURL: String? = null
+) {
+    /** Whether terms or privacy links are available. */
+    val hasLegalLinks: Boolean get() = termsURL != null || privacyURL != null
+}
