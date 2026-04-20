@@ -4,12 +4,15 @@ import android.app.Activity
 import android.content.Context
 import android.content.SharedPreferences
 import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
+import android.os.Build
 import android.util.Log
 import com.android.billingclient.api.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.security.MessageDigest
 
 /**
  * Central manager for Google Play Billing.
@@ -60,6 +63,12 @@ object EStore {
     private var pendingPurchaseProduct: EStoreProduct? = null
 
     /**
+     * Diagnostic snapshot captured at configure() time. Useful when prices don't
+     * load and you need to tell sideload/signature/package issues apart.
+     */
+    private var diagnostics: String = ""
+
+    /**
      * Configure with product definitions. MUST be called before using EStore.
      */
     fun configure(context: Context, config: EStoreConfig) {
@@ -67,6 +76,11 @@ object EStore {
         prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         _isPremium.value = prefs?.getBoolean(KEY_IS_PREMIUM, false) ?: false
         EStoreConsumableManager.init(context)
+
+        diagnostics = buildDiagnostics(context)
+        Log.i(TAG, "configure() called. $diagnostics")
+        Log.i(TAG, "Configured ${config.products.size} product(s): " +
+            config.products.joinToString { "${it.id} (${productTypeLabel(it.type)})" })
 
         // Test mode in debug with test config
         if (isDebug(context) && EStoreTestConfig.hasTestConfig(context)) {
@@ -140,21 +154,87 @@ object EStore {
         return (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
     }
 
+    private fun productTypeLabel(type: EStoreProductType): String = when (type) {
+        is EStoreProductType.Subscription -> "subs"
+        is EStoreProductType.OneTime -> "inapp"
+        is EStoreProductType.Consumable -> "inapp/consumable"
+    }
+
+    private fun responseCodeName(code: Int): String = when (code) {
+        BillingClient.BillingResponseCode.OK -> "OK"
+        BillingClient.BillingResponseCode.USER_CANCELED -> "USER_CANCELED"
+        BillingClient.BillingResponseCode.SERVICE_UNAVAILABLE -> "SERVICE_UNAVAILABLE"
+        BillingClient.BillingResponseCode.BILLING_UNAVAILABLE -> "BILLING_UNAVAILABLE"
+        BillingClient.BillingResponseCode.ITEM_UNAVAILABLE -> "ITEM_UNAVAILABLE"
+        BillingClient.BillingResponseCode.DEVELOPER_ERROR -> "DEVELOPER_ERROR"
+        BillingClient.BillingResponseCode.ERROR -> "ERROR"
+        BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED -> "ITEM_ALREADY_OWNED"
+        BillingClient.BillingResponseCode.ITEM_NOT_OWNED -> "ITEM_NOT_OWNED"
+        BillingClient.BillingResponseCode.FEATURE_NOT_SUPPORTED -> "FEATURE_NOT_SUPPORTED"
+        BillingClient.BillingResponseCode.SERVICE_DISCONNECTED -> "SERVICE_DISCONNECTED"
+        BillingClient.BillingResponseCode.NETWORK_ERROR -> "NETWORK_ERROR"
+        else -> "UNKNOWN"
+    }
+
+    private fun buildDiagnostics(context: Context): String {
+        val pkg = context.packageName
+        val debuggable = isDebug(context)
+        val installer = try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                context.packageManager.getInstallSourceInfo(pkg).installingPackageName
+            } else {
+                @Suppress("DEPRECATION")
+                context.packageManager.getInstallerPackageName(pkg)
+            }
+        } catch (e: Exception) { null }
+        val installerLabel = when (installer) {
+            null -> "sideload (null)"
+            "com.android.vending" -> "Play Store"
+            "com.google.android.packageinstaller",
+            "com.android.packageinstaller" -> "sideload (pm)"
+            else -> installer
+        }
+        val sigShort = try {
+            val pm = context.packageManager
+            val signatures = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                val info = pm.getPackageInfo(pkg, PackageManager.GET_SIGNING_CERTIFICATES)
+                info.signingInfo?.apkContentsSigners ?: emptyArray()
+            } else {
+                @Suppress("DEPRECATION")
+                val info = pm.getPackageInfo(pkg, PackageManager.GET_SIGNATURES)
+                @Suppress("DEPRECATION")
+                info.signatures ?: emptyArray()
+            }
+            val first = signatures.firstOrNull()
+            if (first == null) {
+                "none"
+            } else {
+                val digest = MessageDigest.getInstance("SHA-256").digest(first.toByteArray())
+                // Short 8-byte prefix is enough to identify which key was used
+                digest.take(8).joinToString(":") { "%02X".format(it) }
+            }
+        } catch (e: Exception) { "unknown(${e.javaClass.simpleName})" }
+        return "package=$pkg, installer=$installerLabel, debuggable=$debuggable, signatureSha256Prefix=$sigShort"
+    }
+
     private fun connectAndQuery() {
         _loadingState.value = EStoreLoadingState.Loading
+        Log.i(TAG, "Starting BillingClient connection...")
         billingClient?.startConnection(object : BillingClientStateListener {
             override fun onBillingSetupFinished(billingResult: BillingResult) {
-                if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
+                val code = billingResult.responseCode
+                val msg = billingResult.debugMessage.ifEmpty { "(no debug message)" }
+                Log.i(TAG, "onBillingSetupFinished: code=$code ${responseCodeName(code)}, debugMessage=$msg")
+                if (code == BillingClient.BillingResponseCode.OK) {
                     scope.launch {
                         queryProducts()
                         refreshPurchases()
                     }
                 } else {
-                    val code = billingResult.responseCode
-                    val msg = billingResult.debugMessage
-                    Log.e(TAG, "Billing setup failed (code $code): $msg")
+                    Log.e(TAG, "Billing setup failed. $diagnostics")
                     _loadingState.value = EStoreLoadingState.Failed(
-                        "Billing setup failed (code $code): $msg", code
+                        "Billing setup failed (code $code ${responseCodeName(code)}): $msg",
+                        code
                     )
                 }
             }
@@ -171,8 +251,12 @@ object EStore {
             return
         }
         val allProducts = mutableListOf<EStoreProduct>()
+        var lastErrorCode: Int? = null
+        var lastErrorMessage: String? = null
+        val missingIds = mutableListOf<String>()
 
         if (cfg.subscriptionIds.isNotEmpty()) {
+            Log.i(TAG, "Querying SUBS: ${cfg.subscriptionIds}")
             val params = QueryProductDetailsParams.newBuilder()
                 .setProductList(cfg.subscriptionIds.map {
                     QueryProductDetailsParams.Product.newBuilder()
@@ -181,19 +265,35 @@ object EStore {
                         .build()
                 }).build()
             val result = billingClient?.queryProductDetails(params)
-            if (result != null && result.billingResult.responseCode != BillingClient.BillingResponseCode.OK) {
+            if (result == null) {
+                Log.e(TAG, "SUBS query returned null (BillingClient not ready?)")
+                lastErrorCode = BillingClient.BillingResponseCode.SERVICE_DISCONNECTED
+                lastErrorMessage = "BillingClient returned null result for SUBS query"
+                missingIds.addAll(cfg.subscriptionIds)
+            } else {
                 val code = result.billingResult.responseCode
-                val msg = result.billingResult.debugMessage
-                Log.e(TAG, "Failed to query subscriptions (code $code): $msg")
-            }
-            result?.productDetailsList?.forEach { details ->
-                val pc = cfg.products.first { it.id == details.productId }
-                allProducts.add(EStoreProduct.fromSubscription(details, pc))
+                val dbg = result.billingResult.debugMessage.ifEmpty { "(no debug message)" }
+                val returned = result.productDetailsList?.map { it.productId } ?: emptyList()
+                Log.i(TAG, "SUBS query response: code=$code ${responseCodeName(code)}, debugMessage=$dbg, returnedIds=$returned")
+                if (code != BillingClient.BillingResponseCode.OK) {
+                    lastErrorCode = code
+                    lastErrorMessage = dbg
+                }
+                result.productDetailsList?.forEach { details ->
+                    val pc = cfg.products.firstOrNull { it.id == details.productId }
+                    if (pc == null) {
+                        Log.w(TAG, "Play returned product '${details.productId}' that is not in EStoreConfig — ignoring")
+                    } else {
+                        allProducts.add(EStoreProduct.fromSubscription(details, pc))
+                    }
+                }
+                cfg.subscriptionIds.filter { it !in returned }.forEach { missingIds.add(it) }
             }
         }
 
         val inAppIds = cfg.oneTimeIds + cfg.consumableIds
         if (inAppIds.isNotEmpty()) {
+            Log.i(TAG, "Querying INAPP: $inAppIds")
             val params = QueryProductDetailsParams.newBuilder()
                 .setProductList(inAppIds.map {
                     QueryProductDetailsParams.Product.newBuilder()
@@ -202,14 +302,29 @@ object EStore {
                         .build()
                 }).build()
             val result = billingClient?.queryProductDetails(params)
-            if (result != null && result.billingResult.responseCode != BillingClient.BillingResponseCode.OK) {
+            if (result == null) {
+                Log.e(TAG, "INAPP query returned null (BillingClient not ready?)")
+                lastErrorCode = BillingClient.BillingResponseCode.SERVICE_DISCONNECTED
+                lastErrorMessage = "BillingClient returned null result for INAPP query"
+                missingIds.addAll(inAppIds)
+            } else {
                 val code = result.billingResult.responseCode
-                val msg = result.billingResult.debugMessage
-                Log.e(TAG, "Failed to query in-app products (code $code): $msg")
-            }
-            result?.productDetailsList?.forEach { details ->
-                val pc = cfg.products.first { it.id == details.productId }
-                allProducts.add(EStoreProduct.fromInApp(details, pc))
+                val dbg = result.billingResult.debugMessage.ifEmpty { "(no debug message)" }
+                val returned = result.productDetailsList?.map { it.productId } ?: emptyList()
+                Log.i(TAG, "INAPP query response: code=$code ${responseCodeName(code)}, debugMessage=$dbg, returnedIds=$returned")
+                if (code != BillingClient.BillingResponseCode.OK) {
+                    lastErrorCode = code
+                    lastErrorMessage = dbg
+                }
+                result.productDetailsList?.forEach { details ->
+                    val pc = cfg.products.firstOrNull { it.id == details.productId }
+                    if (pc == null) {
+                        Log.w(TAG, "Play returned product '${details.productId}' that is not in EStoreConfig — ignoring")
+                    } else {
+                        allProducts.add(EStoreProduct.fromInApp(details, pc))
+                    }
+                }
+                inAppIds.filter { it !in returned }.forEach { missingIds.add(it) }
             }
         }
 
@@ -217,12 +332,42 @@ object EStore {
 
         if (allProducts.isEmpty()) {
             val totalConfigured = cfg.subscriptionIds.size + inAppIds.size
-            val msg = "No products loaded. $totalConfigured product(s) configured but none returned from Play Store. Check your product IDs in Google Play Console."
-            Log.w(TAG, msg)
-            _loadingState.value = EStoreLoadingState.Failed(msg)
+            val reason = when {
+                lastErrorCode != null ->
+                    "Play Billing returned ${responseCodeName(lastErrorCode!!)} (code $lastErrorCode): $lastErrorMessage"
+                else ->
+                    "Play Billing returned OK but no ProductDetails for the configured IDs."
+            }
+            val hint = buildHint()
+            val msg = "No products loaded. $totalConfigured configured, 0 returned.\n" +
+                "Missing IDs: ${missingIds.joinToString()}\n" +
+                "Reason: $reason\n" +
+                "Hint: $hint\n" +
+                "Device: $diagnostics"
+            Log.e(TAG, msg)
+            _loadingState.value = EStoreLoadingState.Failed(msg, lastErrorCode)
         } else {
-            Log.i(TAG, "Loaded ${allProducts.size} products")
+            if (missingIds.isNotEmpty()) {
+                Log.w(TAG, "Partial product load. Loaded ${allProducts.size}, missing: $missingIds. " +
+                    "Reason: ${lastErrorMessage ?: "not returned by Play"}. Device: $diagnostics")
+            } else {
+                Log.i(TAG, "Loaded ${allProducts.size} products: ${allProducts.map { it.id }}")
+            }
             _loadingState.value = EStoreLoadingState.Loaded
+        }
+    }
+
+    private fun buildHint(): String {
+        val d = diagnostics
+        val sideload = !d.contains("installer=Play Store")
+        val debug = d.contains("debuggable=true")
+        return when {
+            sideload -> "APK not installed from Play Store. Play Billing returns empty lists for sideloaded APKs. " +
+                "Install the app from the Play Console testing track link on a tester device."
+            debug -> "Debuggable build detected. If the signing certificate doesn't match what Play has " +
+                "for this package, queryProductDetails returns empty. Build a release-signed APK or install from Play."
+            else -> "Verify: (1) product IDs match Google Play Console exactly, (2) the subscription/base plan is Active, " +
+                "(3) the app has an active release on a testing track, (4) the signed-in Google account is on the tester list."
         }
     }
 
