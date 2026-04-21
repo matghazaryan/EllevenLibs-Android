@@ -48,6 +48,8 @@ import com.ellevenstudio.estore.paywalls.*
 import com.ellevenstudio.egate.EGate
 import com.ellevenstudio.egate.EGateConfig
 import com.ellevenstudio.egate.EGateOverlay
+import com.ellevenstudio.esupabaseanalytics.ESupabaseAnalytics
+import com.ellevenstudio.esupabaseanalytics.ESupabaseAnalyticsConfig
 import android.util.Log
 import com.ellevenstudio.ellevenlibs.EllevenLibs
 import com.ellevenstudio.ellevenlibs.example.ui.theme.EllevenLibsTheme
@@ -158,6 +160,18 @@ class MainActivity : ComponentActivity() {
                 )
             )
         )
+
+        // Configure ESupabaseAnalytics — replace with your own Supabase project URL + anon key.
+        // The app is expected to pass the same credentials it already uses for its own
+        // Supabase calls so events land in the existing project.
+        ESupabaseAnalytics.configure(
+            context = this,
+            config = ESupabaseAnalyticsConfig(
+                supabaseUrl = "https://your-project.supabase.co",
+                anonKey = "REPLACE_WITH_YOUR_ANON_KEY"
+            )
+        )
+        ESupabaseAnalytics.track("app_open")
 
         enableEdgeToEdge()
         setContent {

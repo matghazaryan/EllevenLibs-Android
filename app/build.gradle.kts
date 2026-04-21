@@ -46,6 +46,7 @@ dependencies {
     implementation(project(":eads"))
     implementation(project(":estore"))
     implementation(project(":egate"))
+    implementation(project(":esupabaseanalytics"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
