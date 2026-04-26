@@ -257,10 +257,15 @@ object EStore {
         timeoutMs: Long = 15_000
     ): Pair<BillingResult?, List<ProductDetails>?> {
         val client = billingClient ?: return null to null
+        // suspendCancellableCoroutine cooperates with withTimeoutOrNull — a
+        // plain suspendCoroutine would not cancel and the timeout would never
+        // return null even when BillingClient never fires the callback.
         val result = kotlinx.coroutines.withTimeoutOrNull(timeoutMs) {
-            kotlin.coroutines.suspendCoroutine<Pair<BillingResult, List<ProductDetails>>> { cont ->
+            kotlinx.coroutines.suspendCancellableCoroutine<Pair<BillingResult, List<ProductDetails>>> { cont ->
                 client.queryProductDetailsAsync(params) { billingResult, productDetailsList ->
-                    cont.resumeWith(Result.success(billingResult to productDetailsList))
+                    if (cont.isActive) {
+                        cont.resumeWith(Result.success(billingResult to productDetailsList))
+                    }
                 }
             }
         }
