@@ -255,16 +255,16 @@ object EStore {
     private suspend fun queryProductDetailsDirect(
         params: QueryProductDetailsParams,
         timeoutMs: Long = 15_000
-    ): Pair<BillingResult?, List<ProductDetails>?> {
+    ): Pair<BillingResult?, QueryProductDetailsResult?> {
         val client = billingClient ?: return null to null
         // suspendCancellableCoroutine cooperates with withTimeoutOrNull — a
         // plain suspendCoroutine would not cancel and the timeout would never
         // return null even when BillingClient never fires the callback.
         val result = kotlinx.coroutines.withTimeoutOrNull(timeoutMs) {
-            kotlinx.coroutines.suspendCancellableCoroutine<Pair<BillingResult, List<ProductDetails>>> { cont ->
-                client.queryProductDetailsAsync(params) { billingResult, productDetailsList ->
+            kotlinx.coroutines.suspendCancellableCoroutine<Pair<BillingResult, QueryProductDetailsResult>> { cont ->
+                client.queryProductDetailsAsync(params) { billingResult, queryResult ->
                     if (cont.isActive) {
-                        cont.resumeWith(Result.success(billingResult to productDetailsList))
+                        cont.resumeWith(Result.success(billingResult to queryResult))
                     }
                 }
             }
@@ -291,7 +291,7 @@ object EStore {
                         .setProductType(BillingClient.ProductType.SUBS)
                         .build()
                 }).build()
-            val (billingResult, productDetailsList) = queryProductDetailsDirect(params)
+            val (billingResult, queryResult) = queryProductDetailsDirect(params)
             if (billingResult == null) {
                 Log.e(TAG, "SUBS query timed out or BillingClient not ready (15s). $diagnostics")
                 lastErrorCode = BillingClient.BillingResponseCode.SERVICE_TIMEOUT
@@ -300,13 +300,18 @@ object EStore {
             } else {
                 val code = billingResult.responseCode
                 val dbg = billingResult.debugMessage.ifEmpty { "(no debug message)" }
-                val returned = productDetailsList?.map { it.productId } ?: emptyList()
+                val productDetailsList = queryResult?.productDetailsList ?: emptyList()
+                val returned = productDetailsList.map { it.productId }
+                val unfetched = queryResult?.unfetchedProductList ?: emptyList()
                 Log.i(TAG, "SUBS query response: code=$code ${responseCodeName(code)}, debugMessage=$dbg, returnedIds=$returned")
+                if (unfetched.isNotEmpty()) {
+                    Log.w(TAG, "SUBS unfetched: ${unfetched.joinToString { "${it.productId}(status=${it.statusCode})" }}")
+                }
                 if (code != BillingClient.BillingResponseCode.OK) {
                     lastErrorCode = code
                     lastErrorMessage = dbg
                 }
-                productDetailsList?.forEach { details ->
+                productDetailsList.forEach { details ->
                     val pc = cfg.products.firstOrNull { it.id == details.productId }
                     if (pc == null) {
                         Log.w(TAG, "Play returned product '${details.productId}' that is not in EStoreConfig — ignoring")
@@ -328,7 +333,7 @@ object EStore {
                         .setProductType(BillingClient.ProductType.INAPP)
                         .build()
                 }).build()
-            val (billingResult, productDetailsList) = queryProductDetailsDirect(params)
+            val (billingResult, queryResult) = queryProductDetailsDirect(params)
             if (billingResult == null) {
                 Log.e(TAG, "INAPP query timed out or BillingClient not ready (15s). $diagnostics")
                 lastErrorCode = BillingClient.BillingResponseCode.SERVICE_TIMEOUT
@@ -337,13 +342,18 @@ object EStore {
             } else {
                 val code = billingResult.responseCode
                 val dbg = billingResult.debugMessage.ifEmpty { "(no debug message)" }
-                val returned = productDetailsList?.map { it.productId } ?: emptyList()
+                val productDetailsList = queryResult?.productDetailsList ?: emptyList()
+                val returned = productDetailsList.map { it.productId }
+                val unfetched = queryResult?.unfetchedProductList ?: emptyList()
                 Log.i(TAG, "INAPP query response: code=$code ${responseCodeName(code)}, debugMessage=$dbg, returnedIds=$returned")
+                if (unfetched.isNotEmpty()) {
+                    Log.w(TAG, "INAPP unfetched: ${unfetched.joinToString { "${it.productId}(status=${it.statusCode})" }}")
+                }
                 if (code != BillingClient.BillingResponseCode.OK) {
                     lastErrorCode = code
                     lastErrorMessage = dbg
                 }
-                productDetailsList?.forEach { details ->
+                productDetailsList.forEach { details ->
                     val pc = cfg.products.firstOrNull { it.id == details.productId }
                     if (pc == null) {
                         Log.w(TAG, "Play returned product '${details.productId}' that is not in EStoreConfig — ignoring")

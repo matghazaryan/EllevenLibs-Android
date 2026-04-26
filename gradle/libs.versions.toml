@@ -9,8 +9,9 @@ lifecycleRuntimeKtx = "2.10.0"
 activityCompose = "1.12.4"
 composeBom = "2024.09.00"
 playServicesAds = "24.1.0"
-playBilling = "7.1.1"
+playBilling = "8.3.0"
 lifecycleProcess = "2.10.0"
+generativeAi = "0.9.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -31,6 +32,7 @@ play-services-ads = { group = "com.google.android.gms", name = "play-services-ad
 play-billing = { group = "com.android.billingclient", name = "billing", version.ref = "playBilling" }
 play-billing-ktx = { group = "com.android.billingclient", name = "billing-ktx", version.ref = "playBilling" }
 androidx-lifecycle-process = { group = "androidx.lifecycle", name = "lifecycle-process", version.ref = "lifecycleProcess" }
+google-generativeai = { group = "com.google.ai.client", name = "generativeai", version.ref = "generativeAi" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
