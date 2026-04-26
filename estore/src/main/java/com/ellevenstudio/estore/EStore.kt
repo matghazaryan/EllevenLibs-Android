@@ -245,6 +245,28 @@ object EStore {
         })
     }
 
+    /**
+     * Wrap queryProductDetailsAsync in a coroutine without going through
+     * billing-ktx's suspend extension. Real-world reports (and Crashlytics
+     * traces) showed the suspend bridge silently dropping the response under
+     * R8/proguard-android-optimize.txt. This direct callback path is the
+     * minimum surface area: BillingClient -> SAM listener -> resume.
+     */
+    private suspend fun queryProductDetailsDirect(
+        params: QueryProductDetailsParams,
+        timeoutMs: Long = 15_000
+    ): Pair<BillingResult?, List<ProductDetails>?> {
+        val client = billingClient ?: return null to null
+        val result = kotlinx.coroutines.withTimeoutOrNull(timeoutMs) {
+            kotlin.coroutines.suspendCoroutine<Pair<BillingResult, List<ProductDetails>>> { cont ->
+                client.queryProductDetailsAsync(params) { billingResult, productDetailsList ->
+                    cont.resumeWith(Result.success(billingResult to productDetailsList))
+                }
+            }
+        }
+        return result?.first to result?.second
+    }
+
     private suspend fun queryProducts() {
         val cfg = config ?: run {
             _loadingState.value = EStoreLoadingState.Failed("EStore not configured. Call configure() first.")
@@ -264,22 +286,22 @@ object EStore {
                         .setProductType(BillingClient.ProductType.SUBS)
                         .build()
                 }).build()
-            val result = billingClient?.queryProductDetails(params)
-            if (result == null) {
-                Log.e(TAG, "SUBS query returned null (BillingClient not ready?)")
-                lastErrorCode = BillingClient.BillingResponseCode.SERVICE_DISCONNECTED
-                lastErrorMessage = "BillingClient returned null result for SUBS query"
+            val (billingResult, productDetailsList) = queryProductDetailsDirect(params)
+            if (billingResult == null) {
+                Log.e(TAG, "SUBS query timed out or BillingClient not ready (15s). $diagnostics")
+                lastErrorCode = BillingClient.BillingResponseCode.SERVICE_TIMEOUT
+                lastErrorMessage = "Subscription query timed out after 15s. Play Services may be stalled — try Play Store cache clear or reboot."
                 missingIds.addAll(cfg.subscriptionIds)
             } else {
-                val code = result.billingResult.responseCode
-                val dbg = result.billingResult.debugMessage.ifEmpty { "(no debug message)" }
-                val returned = result.productDetailsList?.map { it.productId } ?: emptyList()
+                val code = billingResult.responseCode
+                val dbg = billingResult.debugMessage.ifEmpty { "(no debug message)" }
+                val returned = productDetailsList?.map { it.productId } ?: emptyList()
                 Log.i(TAG, "SUBS query response: code=$code ${responseCodeName(code)}, debugMessage=$dbg, returnedIds=$returned")
                 if (code != BillingClient.BillingResponseCode.OK) {
                     lastErrorCode = code
                     lastErrorMessage = dbg
                 }
-                result.productDetailsList?.forEach { details ->
+                productDetailsList?.forEach { details ->
                     val pc = cfg.products.firstOrNull { it.id == details.productId }
                     if (pc == null) {
                         Log.w(TAG, "Play returned product '${details.productId}' that is not in EStoreConfig — ignoring")
@@ -301,22 +323,22 @@ object EStore {
                         .setProductType(BillingClient.ProductType.INAPP)
                         .build()
                 }).build()
-            val result = billingClient?.queryProductDetails(params)
-            if (result == null) {
-                Log.e(TAG, "INAPP query returned null (BillingClient not ready?)")
-                lastErrorCode = BillingClient.BillingResponseCode.SERVICE_DISCONNECTED
-                lastErrorMessage = "BillingClient returned null result for INAPP query"
+            val (billingResult, productDetailsList) = queryProductDetailsDirect(params)
+            if (billingResult == null) {
+                Log.e(TAG, "INAPP query timed out or BillingClient not ready (15s). $diagnostics")
+                lastErrorCode = BillingClient.BillingResponseCode.SERVICE_TIMEOUT
+                lastErrorMessage = "In-app product query timed out after 15s."
                 missingIds.addAll(inAppIds)
             } else {
-                val code = result.billingResult.responseCode
-                val dbg = result.billingResult.debugMessage.ifEmpty { "(no debug message)" }
-                val returned = result.productDetailsList?.map { it.productId } ?: emptyList()
+                val code = billingResult.responseCode
+                val dbg = billingResult.debugMessage.ifEmpty { "(no debug message)" }
+                val returned = productDetailsList?.map { it.productId } ?: emptyList()
                 Log.i(TAG, "INAPP query response: code=$code ${responseCodeName(code)}, debugMessage=$dbg, returnedIds=$returned")
                 if (code != BillingClient.BillingResponseCode.OK) {
                     lastErrorCode = code
                     lastErrorMessage = dbg
                 }
-                result.productDetailsList?.forEach { details ->
+                productDetailsList?.forEach { details ->
                     val pc = cfg.products.firstOrNull { it.id == details.productId }
                     if (pc == null) {
                         Log.w(TAG, "Play returned product '${details.productId}' that is not in EStoreConfig — ignoring")
