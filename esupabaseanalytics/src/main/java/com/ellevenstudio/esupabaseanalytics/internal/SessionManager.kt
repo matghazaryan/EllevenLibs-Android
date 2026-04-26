@@ -68,6 +68,17 @@ internal class SessionManager(
         return Roll(existing, duration, fresh)
     }
 
+    /**
+     * Read the in-memory session id without rolling, refreshing, or touching
+     * `lastEventAt`. Returns `null` if no session has ever been started.
+     * Used by the crash reporter when capturing a crash for a session that's
+     * already ending — we want the crash tagged with the in-flight session id
+     * without artificially extending its lifetime.
+     */
+    fun peekSessionId(): String? = synchronized(lock) {
+        prefs.getString(KEY_ID, null)
+    }
+
     fun touchEvent(now: Long = System.currentTimeMillis()) = synchronized(lock) {
         prefs.edit().putLong(KEY_LAST_EVENT, now).apply()
     }

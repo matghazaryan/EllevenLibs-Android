@@ -8,10 +8,18 @@ import org.json.JSONObject
 
 /**
  * Disk-backed FIFO queue of event JSON objects, stored as a single JSON array
- * string in [SharedPreferences]. All access goes through a [Mutex] so writes
- * from the public `track(...)` path and reads from the flush loop can't race.
+ * string in [SharedPreferences] under [storageKey] (default "queue"). The
+ * sister observability recorders (`ESupabaseNetworkRecorder`,
+ * `ESupabaseRevenueRecorder`, `ESupabaseCrashReporter`) instantiate their own
+ * EventQueue with a distinct key so the four streams don't clobber each other.
+ *
+ * All access goes through a [Mutex] so writes from the public `track(...)`
+ * path and reads from the flush loop can't race.
  */
-internal class EventQueue(private val prefs: SharedPreferences) {
+internal class EventQueue(
+    private val prefs: SharedPreferences,
+    private val storageKey: String = DEFAULT_KEY,
+) {
     private val mutex = Mutex()
 
     suspend fun enqueue(event: JSONObject) {
@@ -50,7 +58,7 @@ internal class EventQueue(private val prefs: SharedPreferences) {
 
     suspend fun clear() {
         mutex.withLock {
-            prefs.edit().remove(KEY_QUEUE).apply()
+            prefs.edit().remove(storageKey).apply()
         }
     }
 
@@ -62,7 +70,7 @@ internal class EventQueue(private val prefs: SharedPreferences) {
 
     // Must be called with [mutex] held.
     private fun loadLocked(): JSONArray {
-        val raw = prefs.getString(KEY_QUEUE, null) ?: return JSONArray()
+        val raw = prefs.getString(storageKey, null) ?: return JSONArray()
         return try {
             JSONArray(raw)
         } catch (_: Exception) {
@@ -72,13 +80,13 @@ internal class EventQueue(private val prefs: SharedPreferences) {
 
     private fun saveLocked(array: JSONArray) {
         if (array.length() == 0) {
-            prefs.edit().remove(KEY_QUEUE).apply()
+            prefs.edit().remove(storageKey).apply()
         } else {
-            prefs.edit().putString(KEY_QUEUE, array.toString()).apply()
+            prefs.edit().putString(storageKey, array.toString()).apply()
         }
     }
 
     companion object {
-        private const val KEY_QUEUE = "queue"
+        private const val DEFAULT_KEY = "queue"
     }
 }

@@ -55,11 +55,27 @@ object ESupabaseAnalytics {
     private var deviceContext: DeviceContext? = null
 
     private var prefs: SharedPreferences? = null
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    internal val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var flushJob: Job? = null
 
     @Volatile private var userId: String? = null
     @Volatile private var authToken: String? = null
+
+    // Internal accessors for sister recorders (NetworkRecorder, CrashReporter,
+    // RevenueRecorder). Read-only — public mutators are still the only writers.
+    internal fun sharedConfig(): ESupabaseAnalyticsConfig? = config
+    internal fun sharedUserId(): String? = userId
+    internal fun sharedAuthToken(): String? = authToken
+    internal fun sharedDeviceContext(): DeviceContext? = deviceContext
+    internal fun sharedPrefs(): SharedPreferences? = prefs
+
+    /** Touches the session (extends activity timer) and returns the current id. */
+    internal fun sharedTouchSession(now: Long = System.currentTimeMillis()): String? {
+        return session?.currentSessionId(now)
+    }
+
+    /** Reads the in-flight session id without touching `lastEventAt`. */
+    internal fun sharedReadSessionWithoutTouch(): String? = session?.peekSessionId()
 
     private var lifecycleObserver: DefaultLifecycleObserver? = null
 
