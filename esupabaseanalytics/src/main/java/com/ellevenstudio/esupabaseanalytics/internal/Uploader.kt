@@ -37,7 +37,7 @@ internal class Uploader(
             conn.setRequestProperty("Prefer", "return=minimal")
 
             val array = JSONArray()
-            events.forEach { array.put(it) }
+            normalizeBatchKeys(events).forEach { array.put(it) }
 
             OutputStreamWriter(conn.outputStream, Charsets.UTF_8).use { w ->
                 w.write(array.toString())
@@ -63,6 +63,31 @@ internal class Uploader(
             false
         } finally {
             conn.disconnect()
+        }
+    }
+
+    // PostgREST bulk insert (PGRST102) requires every row in the array to have
+    // the same keys. Optional columns (user_id, screen_name, properties, ...)
+    // are added per-event, so a batch can mix shapes — fill the gaps with
+    // JSONObject.NULL so the request body has uniform shape.
+    private fun normalizeBatchKeys(events: List<JSONObject>): List<JSONObject> {
+        if (events.size <= 1) return events
+        val keys = HashSet<String>()
+        for (ev in events) {
+            val it = ev.keys()
+            while (it.hasNext()) keys.add(it.next())
+        }
+        return events.map { ev ->
+            val copy = JSONObject()
+            val it = ev.keys()
+            while (it.hasNext()) {
+                val k = it.next()
+                copy.put(k, ev.opt(k))
+            }
+            for (k in keys) {
+                if (!copy.has(k)) copy.put(k, JSONObject.NULL)
+            }
+            copy
         }
     }
 
