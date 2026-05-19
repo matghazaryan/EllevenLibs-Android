@@ -41,7 +41,21 @@ data class EStoreFeature(
 data class EStoreConfig(
     val products: List<EStoreProductConfig>,
     val features: List<EStoreFeature> = emptyList(),
-    val theme: EStoreTheme = EStoreTheme()
+    val theme: EStoreTheme = EStoreTheme(),
+    /**
+     * Override automatic test-mode detection.
+     *
+     * - `null` (default): use the simulator in debug builds when an
+     *   `estore_test_products.json` is bundled in app assets; otherwise call
+     *   real Google Play Billing.
+     * - `false`: force real Play Billing even in debug builds. Useful when
+     *   testing against the Play Console Internal Testing track with a
+     *   release-signed APK installed via Play.
+     * - `true`: force the simulator regardless of build type. Useful for UI
+     *   tests / screenshots in release builds. Still requires an
+     *   `estore_test_products.json` in app assets.
+     */
+    val testMode: Boolean? = null,
 ) {
     init {
         require(products.isNotEmpty()) { "[EStore] ERROR: You must provide at least one product configuration." }

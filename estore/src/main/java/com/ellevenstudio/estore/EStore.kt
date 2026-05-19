@@ -82,15 +82,28 @@ object EStore {
         Log.i(TAG, "Configured ${config.products.size} product(s): " +
             config.products.joinToString { "${it.id} (${productTypeLabel(it.type)})" })
 
-        // Test mode in debug with test config
-        if (isDebug(context) && EStoreTestConfig.hasTestConfig(context)) {
+        // Test-mode trigger:
+        //   - config.testMode == true  → force simulator (requires JSON in assets)
+        //   - config.testMode == false → force real Play Billing
+        //   - config.testMode == null  → auto: debug build + JSON present → simulator
+        val shouldUseTestMode = when (config.testMode) {
+            true  -> true
+            false -> false
+            null  -> isDebug(context)
+        }
+        if (shouldUseTestMode && EStoreTestConfig.hasTestConfig(context)) {
             isTestMode = true
             _loadingState.value = EStoreLoadingState.Loading
-            Log.i(TAG, "Test mode enabled — using estore_test_products.json")
+            val reason = if (config.testMode == true) "forced via config.testMode=true"
+                         else "debug build + estore_test_products.json in assets"
+            Log.i(TAG, "Test mode enabled ($reason)")
             _products.value = EStoreTestConfig.loadTestProducts(context, config)
             loadTestPurchasesFromPrefs()
             _loadingState.value = EStoreLoadingState.Loaded
             return
+        }
+        if (config.testMode == true && !EStoreTestConfig.hasTestConfig(context)) {
+            Log.w(TAG, "config.testMode=true but no estore_test_products.json in assets — falling back to real Play Billing")
         }
 
         isTestMode = false
