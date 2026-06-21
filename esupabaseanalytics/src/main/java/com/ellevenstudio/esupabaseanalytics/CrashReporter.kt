@@ -264,7 +264,7 @@ object ESupabaseCrashReporter {
         val crashConfig = ESupabaseAnalyticsConfig(
             supabaseUrl = config.supabaseUrl,
             anonKey = config.anonKey,
-            tableName = "crashes",
+            tableName = "elleven_crashes",
             flushIntervalMs = config.flushIntervalMs,
             sessionTimeoutMs = config.sessionTimeoutMs,
         )

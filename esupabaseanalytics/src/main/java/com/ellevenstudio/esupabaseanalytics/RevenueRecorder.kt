@@ -152,7 +152,7 @@ object ESupabaseRevenueRecorder {
         val revenueConfig = ESupabaseAnalyticsConfig(
             supabaseUrl = config.supabaseUrl,
             anonKey = config.anonKey,
-            tableName = "revenue",
+            tableName = "elleven_revenue",
             flushIntervalMs = config.flushIntervalMs,
             sessionTimeoutMs = config.sessionTimeoutMs,
         )

@@ -160,7 +160,7 @@ object ESupabaseNetworkRecorder {
         val networkConfig = ESupabaseAnalyticsConfig(
             supabaseUrl = config.supabaseUrl,
             anonKey = config.anonKey,
-            tableName = "network_requests",
+            tableName = "elleven_network_requests",
             flushIntervalMs = config.flushIntervalMs,
             sessionTimeoutMs = config.sessionTimeoutMs,
         )
