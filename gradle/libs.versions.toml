@@ -9,7 +9,7 @@ lifecycleRuntimeKtx = "2.10.0"
 activityCompose = "1.12.4"
 composeBom = "2024.09.00"
 playServicesAds = "24.1.0"
-playBilling = "8.3.0"
+playBilling = "9.1.0"
 lifecycleProcess = "2.10.0"
 generativeAi = "0.9.0"
 
