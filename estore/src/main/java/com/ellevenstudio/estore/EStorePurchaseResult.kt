@@ -28,10 +28,29 @@ data class EStorePurchaseResult(
     val type: EStoreProductType? = null,
     /** Subscription period ISO 8601 (e.g., "P1M"). Null for non-subscriptions. */
     val subscriptionPeriod: String? = null,
-    /** Trial period (e.g., "P2W" for 2 weeks). Null if no trial. */
+    /**
+     * Trial period the *product* advertises (e.g., "P2W"). Null if the product
+     * has no free-trial offer.
+     *
+     * Note: this describes the product, **not** this purchase. A trial-bearing
+     * product can still be bought at full price when the buyer is no longer
+     * eligible. Use [isFreeTrial] to decide whether money changed hands.
+     */
     val trialPeriod: String? = null,
-    /** Number of trial days. 0 if no trial. */
+    /** Number of trial days the product advertises. 0 if no trial. */
     val trialDays: Int = 0,
+    /**
+     * True only when Play applied a **free-trial** pricing phase to *this*
+     * purchase — the first billing phase costs zero. A paid introductory offer
+     * is a real purchase and reports `false`.
+     */
+    val isFreeTrial: Boolean = false,
+    /**
+     * What Play actually charges for the first billing phase, in micros.
+     * Differs from [priceAmountMicros] (the product's list price) whenever an
+     * introductory or free-trial offer applied. Null when unknown.
+     */
+    val paidPriceMicros: Long? = null,
     /** When the purchase was made. */
     val purchaseDate: Date? = null,
     /** When the subscription expires. Null for lifetime/consumable. */

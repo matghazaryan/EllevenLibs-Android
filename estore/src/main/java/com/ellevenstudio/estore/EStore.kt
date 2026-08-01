@@ -63,6 +63,13 @@ object EStore {
     private var pendingPurchaseProduct: EStoreProduct? = null
 
     /**
+     * First pricing phase of the offer handed to `launchBillingFlow`, captured
+     * so the result can report what Play actually charged instead of the
+     * product's list price. Null for one-time products.
+     */
+    private var pendingPurchaseFirstPhase: ProductDetails.PricingPhase? = null
+
+    /**
      * Diagnostic snapshot captured at configure() time. Useful when prices don't
      * load and you need to tell sideload/signature/package issues apart.
      */
@@ -110,6 +117,7 @@ object EStore {
         billingClient = BillingClient.newBuilder(context)
             .setListener { billingResult, purchases ->
                 val product = pendingPurchaseProduct
+                val firstPhase = pendingPurchaseFirstPhase
                 if (billingResult.responseCode == BillingClient.BillingResponseCode.OK && purchases != null) {
                     scope.launch {
                         for (purchase in purchases) {
@@ -128,6 +136,11 @@ object EStore {
                                 subscriptionPeriod = product.subscriptionPeriod,
                                 trialPeriod = product.trialPeriod,
                                 trialDays = product.trialDays,
+                                // Derived from the offer Play actually applied,
+                                // not from whether the product advertises a trial.
+                                isFreeTrial = firstPhase?.priceAmountMicros == 0L,
+                                paidPriceMicros = firstPhase?.priceAmountMicros
+                                    ?: product.priceAmountMicros,
                                 purchaseDate = java.util.Date(p.purchaseTime),
                                 orderId = p.orderId,
                                 purchaseToken = p.purchaseToken
@@ -135,6 +148,7 @@ object EStore {
                         }
                         purchaseCallback = null
                         pendingPurchaseProduct = null
+                    pendingPurchaseFirstPhase = null
                     }
                 } else if (billingResult.responseCode == BillingClient.BillingResponseCode.USER_CANCELED) {
                     purchaseCallback?.invoke(EStorePurchaseResult(
@@ -143,6 +157,7 @@ object EStore {
                     ))
                     purchaseCallback = null
                     pendingPurchaseProduct = null
+                    pendingPurchaseFirstPhase = null
                 } else {
                     purchaseCallback?.invoke(EStorePurchaseResult(
                         status = EStorePurchaseStatus.FAILED,
@@ -150,6 +165,7 @@ object EStore {
                     ))
                     purchaseCallback = null
                     pendingPurchaseProduct = null
+                    pendingPurchaseFirstPhase = null
                 }
             }
             .enablePendingPurchases(
@@ -519,6 +535,10 @@ object EStore {
                 subscriptionPeriod = product.subscriptionPeriod,
                 trialPeriod = product.trialPeriod,
                 trialDays = product.trialDays,
+                // No real offer exists in test mode, so simulate the
+                // first-purchase path: a trial-bearing product starts its trial.
+                isFreeTrial = product.trialPeriod != null,
+                paidPriceMicros = if (product.trialPeriod != null) 0L else product.priceAmountMicros,
                 purchaseDate = info.purchaseDate,
                 expirationDate = info.expirationDate,
                 orderId = info.orderId,
@@ -533,10 +553,15 @@ object EStore {
 
         val productDetails = product.productDetails ?: return
         val paramsList = if (product.type is EStoreProductType.Subscription) {
-            val offerToken = productDetails.subscriptionOfferDetails?.firstOrNull()?.offerToken ?: return
+            val offer = productDetails.subscriptionOfferDetails?.firstOrNull() ?: return
+            // Remember the phase Play will bill first. A zero-price first phase
+            // is the only reliable signal that this purchase is a free trial —
+            // the product advertising a trial says nothing about eligibility.
+            pendingPurchaseFirstPhase = offer.pricingPhases.pricingPhaseList.firstOrNull()
             listOf(BillingFlowParams.ProductDetailsParams.newBuilder()
-                .setProductDetails(productDetails).setOfferToken(offerToken).build())
+                .setProductDetails(productDetails).setOfferToken(offer.offerToken).build())
         } else {
+            pendingPurchaseFirstPhase = null
             listOf(BillingFlowParams.ProductDetailsParams.newBuilder()
                 .setProductDetails(productDetails).build())
         }
